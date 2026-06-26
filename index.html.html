@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Book a Date With Me</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --blush: #F2C4CE;
+    --rose: #C0566B;
+    --deep: #7A2035;
+    --cream: #FDF6F8;
+    --soft: #FAE8ED;
+    --text: #2A1218;
+    --muted: #9E6070;
+    --white: #FFFFFF;
+    --accepted: #4A8C5C;
+    --review: #C07030;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+  nav {
+    background: var(--white);
+    border-bottom: 1px solid var(--blush);
+    padding: 18px 32px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .nav-logo { font-family: 'Playfair Display', serif; font-weight: 900; font-size: 1.2rem; color: var(--rose); letter-spacing: 0.04em; cursor: pointer; }
+  .nav-links { display: flex; gap: 8px; }
+  .nav-links button {
+    background: none; border: none; font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem; font-weight: 500; color: var(--muted);
+    cursor: pointer; padding: 8px 16px; border-radius: 20px; transition: all 0.2s;
+  }
+  .nav-links button:hover, .nav-links button.active { background: var(--soft); color: var(--rose); }
+
+  .page { display: none; }
+  .page.active { display: block; animation: fadeIn 0.25s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* HERO */
+  .hero { padding: 64px 32px 48px; text-align: center; max-width: 600px; margin: 0 auto; }
+  .eyebrow { font-size: 0.72rem; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: var(--rose); margin-bottom: 16px; }
+  h1 { font-family: 'Playfair Display', serif; font-size: clamp(2.6rem, 8vw, 4rem); font-weight: 900; line-height: 1.05; color: var(--rose); margin-bottom: 20px; }
+  .hero p { font-size: 1rem; color: var(--muted); line-height: 1.65; max-width: 420px; margin: 0 auto 36px; }
+
+  .btn-primary {
+    display: inline-block; background: var(--rose); color: var(--white); border: none;
+    font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 500;
+    letter-spacing: 0.06em; text-transform: uppercase; padding: 16px 40px;
+    border-radius: 50px; cursor: pointer; transition: all 0.2s;
+  }
+  .btn-primary:hover { background: var(--deep); transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-secondary {
+    display: inline-block; background: transparent; color: var(--rose);
+    border: 1.5px solid var(--blush); font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 14px 32px; border-radius: 50px; cursor: pointer; transition: all 0.2s; margin-left: 12px;
+  }
+  .btn-secondary:hover { background: var(--soft); border-color: var(--rose); }
+
+  .card { background: var(--white); border-radius: 20px; padding: 32px; border: 1px solid var(--blush); margin: 0 auto; max-width: 560px; }
+
+  /* FORM */
+  .form-wrap { padding: 40px 24px; max-width: 560px; margin: 0 auto; }
+  .form-wrap h1 { font-size: clamp(2rem, 6vw, 3rem); margin-bottom: 8px; }
+  .form-wrap .subtitle { color: var(--muted); font-size: 0.95rem; margin-bottom: 36px; line-height: 1.55; }
+  .form-group { margin-bottom: 22px; }
+  .form-group label { display: block; font-size: 0.84rem; font-weight: 500; color: var(--text); margin-bottom: 8px; }
+  .form-group input, .form-group textarea {
+    width: 100%; background: var(--soft); border: 1.5px solid var(--blush);
+    border-radius: 12px; padding: 14px 18px; font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem; color: var(--text); outline: none; transition: border-color 0.2s; -webkit-appearance: none;
+  }
+  .form-group input:focus, .form-group textarea:focus { border-color: var(--rose); background: var(--white); }
+  .form-group textarea { min-height: 96px; resize: vertical; }
+  .form-group input::placeholder, .form-group textarea::placeholder { color: var(--muted); opacity: 0.6; }
+
+  /* PHOTO/VIDEO UPLOAD */
+  .upload-section { margin-bottom: 22px; }
+  .upload-section label { display: block; font-size: 0.84rem; font-weight: 500; color: var(--text); margin-bottom: 8px; }
+  .upload-hint { font-size: 0.78rem; color: var(--muted); margin-bottom: 12px; }
+  .upload-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
+  .upload-thumb {
+    aspect-ratio: 1; border-radius: 12px; background: var(--soft);
+    border: 1.5px dashed var(--blush); display: flex; flex-direction: column;
+    align-items: center; justify-content: center; cursor: pointer;
+    transition: all 0.2s; overflow: hidden; position: relative;
+  }
+  .upload-thumb:hover { border-color: var(--rose); background: var(--white); }
+  .upload-thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; }
+  .upload-thumb .thumb-icon { font-size: 1.4rem; margin-bottom: 4px; }
+  .upload-thumb .thumb-label { font-size: 0.72rem; color: var(--muted); }
+  .upload-thumb .remove-btn {
+    position: absolute; top: 6px; right: 6px; background: rgba(122,32,53,0.8);
+    color: white; border: none; border-radius: 50%; width: 22px; height: 22px;
+    font-size: 0.7rem; cursor: pointer; display: none; align-items: center; justify-content: center;
+  }
+  .upload-thumb:hover .remove-btn { display: flex; }
+
+  .video-upload-zone {
+    border: 2px dashed var(--blush); border-radius: 14px; padding: 28px 20px;
+    text-align: center; background: var(--soft); cursor: pointer; transition: all 0.2s;
+  }
+  .video-upload-zone:hover { border-color: var(--rose); background: var(--white); }
+  .video-upload-zone.has-file { border-color: var(--rose); border-style: solid; background: var(--white); }
+  .video-upload-zone .icon { font-size: 1.8rem; margin-bottom: 8px; }
+  .video-upload-zone p { color: var(--muted); font-size: 0.88rem; }
+  .video-upload-zone .file-name { color: var(--rose); font-weight: 500; font-size: 0.88rem; margin-top: 6px; }
+
+  .upload-progress {
+    background: var(--soft); border-radius: 8px; height: 6px; overflow: hidden; margin-top: 8px; display: none;
+  }
+  .upload-progress-bar { height: 100%; background: var(--rose); transition: width 0.3s; width: 0%; }
+
+  .form-submit { width: 100%; padding: 18px; font-size: 0.95rem; margin-top: 12px; }
+
+  /* STATUS */
+  .status-wrap { padding: 48px 24px; max-width: 560px; margin: 0 auto; text-align: center; }
+  .status-wrap h1 { font-size: clamp(2rem, 7vw, 3.2rem); margin-bottom: 8px; }
+  .status-wrap .tagline { color: var(--muted); margin-bottom: 40px; font-style: italic; }
+  .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px; }
+  .status-cell { background: var(--white); border: 1px solid var(--blush); border-radius: 16px; padding: 24px 20px; text-align: left; }
+  .status-cell .label { font-size: 0.7rem; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+  .status-cell .value { font-family: 'Playfair Display', serif; font-size: 2.4rem; font-weight: 700; color: var(--rose); line-height: 1; }
+  .status-cell .value.days { font-size: 1.4rem; line-height: 1.2; }
+
+  .skip-cta { background: var(--soft); border-radius: 16px; padding: 24px; margin-bottom: 20px; border: 1px solid var(--blush); }
+  .skip-cta p { color: var(--muted); font-size: 0.9rem; margin-bottom: 16px; line-height: 1.55; }
+
+  /* QUEUE */
+  .queue-wrap { padding: 40px 24px; max-width: 600px; margin: 0 auto; }
+  .queue-wrap h1 { font-size: clamp(2rem, 6vw, 3rem); margin-bottom: 6px; }
+  .queue-wrap .subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 32px; }
+  .queue-table { background: var(--white); border-radius: 20px; border: 1px solid var(--blush); overflow: hidden; margin-bottom: 28px; }
+  .queue-row { display: grid; grid-template-columns: 48px 1fr auto; align-items: center; padding: 18px 24px; border-bottom: 1px solid var(--soft); transition: background 0.15s; }
+  .queue-row:last-child { border-bottom: none; }
+  .queue-row:hover { background: var(--soft); }
+  .queue-num { font-size: 0.85rem; color: var(--muted); font-weight: 500; }
+  .queue-name { font-weight: 500; font-size: 0.95rem; }
+  .queue-status { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+  .queue-status.accepted { color: var(--accepted); }
+  .queue-status.review { color: var(--review); }
+  .queue-status.pending { color: var(--muted); }
+  .queue-empty { padding: 48px 24px; text-align: center; color: var(--muted); font-style: italic; }
+
+  /* FAST PASS */
+  .fastpass-wrap { padding: 40px 24px; max-width: 560px; margin: 0 auto; }
+  .fastpass-wrap h1 { font-size: clamp(1.8rem, 6vw, 2.8rem); margin-bottom: 8px; }
+  .fastpass-wrap .subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 32px; line-height: 1.55; }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(100px);
+    background: var(--deep); color: var(--white); padding: 14px 28px; border-radius: 50px;
+    font-size: 0.88rem; font-weight: 500; z-index: 999;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.error { background: #8B2020; }
+
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.4); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .disclaimer { font-size: 0.75rem; color: var(--muted); text-align: center; padding: 16px 24px; opacity: 0.7; }
+  .loading-state { text-align: center; padding: 48px 24px; color: var(--muted); }
+
+  @media (max-width: 480px) {
+    nav { padding: 14px 16px; }
+    .hero, .form-wrap, .status-wrap, .fastpass-wrap, .queue-wrap { padding-left: 16px; padding-right: 16px; }
+    .btn-secondary { margin-left: 0; margin-top: 10px; display: block; text-align: center; }
+    .upload-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  /* CONFIG BANNER */
+  .config-banner {
+    background: #FFF3CD; border: 1px solid #FFCC00; padding: 12px 20px;
+    font-size: 0.82rem; color: #665500; text-align: center;
+  }
+  .config-banner code { background: rgba(0,0,0,0.08); padding: 2px 6px; border-radius: 4px; font-size: 0.78rem; }
+</style>
+</head>
+<body>
+
+<div id="config-banner" class="config-banner" style="display:none;">
+  Add your Supabase credentials: replace <code>YOUR_SUPABASE_URL</code> and <code>YOUR_SUPABASE_ANON_KEY</code> in the script below.
+</div>
+
+<nav>
+  <div class="nav-logo" onclick="showPage('home')">Book a Date With Me</div>
+  <div class="nav-links">
+    <button class="active" onclick="showPage('home')">Home</button>
+    <button onclick="showPage('queue-live')">Live Queue</button>
+  </div>
+</nav>
+
+<!-- HOME -->
+<div id="page-home" class="page active">
+  <div class="hero">
+    <div class="eyebrow">Limited spots available</div>
+    <h1>Book a Date<br>With Me</h1>
+    <p>Seeking a charming, confident, and interesting human. Plan the date. Secure your spot. May the best one win.</p>
+    <button class="btn-primary" onclick="showPage('apply')">Join the Queue</button>
+    <button class="btn-secondary" onclick="showPage('queue-live')">View Live Queue</button>
+  </div>
+  <div style="max-width:560px;margin:0 auto 64px;padding:0 24px;">
+    <div class="card">
+      <div class="eyebrow" style="margin-bottom:16px;">How it works</div>
+      <div style="display:flex;flex-direction:column;gap:20px;">
+        <div style="display:flex;gap:16px;align-items:flex-start;">
+          <div style="background:var(--soft);color:var(--rose);font-family:'Playfair Display',serif;font-weight:700;font-size:1.1rem;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">1</div>
+          <div><div style="font-weight:500;font-size:0.92rem;margin-bottom:4px;">Complete the application</div><div style="color:var(--muted);font-size:0.84rem;line-height:1.5;">Tell me who you are, why you're worth my Friday night, and what you have in mind. Add photos.</div></div>
+        </div>
+        <div style="display:flex;gap:16px;align-items:flex-start;">
+          <div style="background:var(--soft);color:var(--rose);font-family:'Playfair Display',serif;font-weight:700;font-size:1.1rem;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</div>
+          <div><div style="font-weight:500;font-size:0.92rem;margin-bottom:4px;">Join the queue</div><div style="color:var(--muted);font-size:0.84rem;line-height:1.5;">Your spot is held. Review takes 5 to 7 business days. Or skip the line with a Fast Pass.</div></div>
+        </div>
+        <div style="display:flex;gap:16px;align-items:flex-start;">
+          <div style="background:var(--soft);color:var(--rose);font-family:'Playfair Display',serif;font-weight:700;font-size:1.1rem;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</div>
+          <div><div style="font-weight:500;font-size:0.92rem;margin-bottom:4px;">Wait for the verdict</div><div style="color:var(--muted);font-size:0.84rem;line-height:1.5;">Accepted applications get a DM. Be ready.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- APPLICATION FORM -->
+<div id="page-apply" class="page">
+  <div class="form-wrap">
+    <div class="eyebrow">The Application</div>
+    <h1>Join the Queue</h1>
+    <p class="subtitle">Fill this out completely. Partial applications are automatically rejected.</p>
+
+    <div class="form-group">
+      <label>Full Name *</label>
+      <input type="text" id="f-name" placeholder="First Last" />
+    </div>
+    <div class="form-group">
+      <label>Instagram Handle *</label>
+      <input type="text" id="f-ig" placeholder="@yourhandle" />
+    </div>
+    <div class="form-group">
+      <label>Email Address *</label>
+      <input type="email" id="f-email" placeholder="you@gmail.com" />
+      <div style="font-size:0.76rem;color:var(--muted);margin-top:6px;">For your confirmation email only. Not shared.</div>
+    </div>
+    <div class="form-group">
+      <label>Age *</label>
+      <input type="number" id="f-age" placeholder="Your age" min="18" max="99" />
+    </div>
+    <div class="form-group">
+      <label>Why should I pick you? *</label>
+      <textarea id="f-why" placeholder="Make it compelling. You have my attention for exactly this text box."></textarea>
+    </div>
+    <div class="form-group">
+      <label>Your date idea *</label>
+      <textarea id="f-idea" placeholder="Suggest something specific. Final scheduling is my call." style="min-height:80px;"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Dealbreakers I should know about</label>
+      <input type="text" id="f-deals" placeholder="I only eat sushi, I love Taylor Swift, etc." />
+    </div>
+    <div class="form-group">
+      <label>Vouched for by</label>
+      <input type="text" id="f-verify" placeholder="Someone who will vouch for you (name + @handle)" />
+    </div>
+
+    <!-- PHOTO UPLOAD -->
+    <div class="upload-section">
+      <label>Photos <span style="color:var(--muted);font-weight:400;">(up to 3)</span></label>
+      <p class="upload-hint">Add at least one photo. JPG or PNG, max 5MB each.</p>
+      <div class="upload-grid" id="photo-grid">
+        <div class="upload-thumb" onclick="triggerPhotoUpload(0)" id="thumb-0">
+          <div class="thumb-icon">📷</div>
+          <div class="thumb-label">Add photo</div>
+        </div>
+        <div class="upload-thumb" onclick="triggerPhotoUpload(1)" id="thumb-1">
+          <div class="thumb-icon">📷</div>
+          <div class="thumb-label">Add photo</div>
+        </div>
+        <div class="upload-thumb" onclick="triggerPhotoUpload(2)" id="thumb-2">
+          <div class="thumb-icon">📷</div>
+          <div class="thumb-label">Add photo</div>
+        </div>
+      </div>
+      <input type="file" id="photo-input-0" accept="image/jpeg,image/png,image/webp" style="display:none;" onchange="handlePhotoSelect(event,0)" />
+      <input type="file" id="photo-input-1" accept="image/jpeg,image/png,image/webp" style="display:none;" onchange="handlePhotoSelect(event,1)" />
+      <input type="file" id="photo-input-2" accept="image/jpeg,image/png,image/webp" style="display:none;" onchange="handlePhotoSelect(event,2)" />
+    </div>
+
+    <!-- VIDEO UPLOAD -->
+    <div class="upload-section">
+      <label>Short video <span style="color:var(--muted);font-weight:400;">(optional, max 60 sec)</span></label>
+      <p class="upload-hint">Say hi, show your personality. MP4 or MOV, max 50MB.</p>
+      <div class="video-upload-zone" id="video-zone" onclick="document.getElementById('video-input').click()">
+        <div class="icon">🎬</div>
+        <p>Tap to attach a video</p>
+        <input type="file" id="video-input" accept="video/mp4,video/quicktime,video/mov" style="display:none;" onchange="handleVideoSelect(event)" />
+        <div class="file-name" id="video-filename"></div>
+      </div>
+      <div class="upload-progress" id="upload-progress">
+        <div class="upload-progress-bar" id="upload-progress-bar"></div>
+      </div>
+    </div>
+
+    <button class="btn-primary form-submit" id="submit-btn" onclick="submitApplication()">Submit Application</button>
+    <p class="disclaimer">I reserve the right to reject any application for any reason.</p>
+  </div>
+</div>
+
+<!-- STATUS PAGE -->
+<div id="page-status" class="page">
+  <div class="status-wrap">
+    <div class="eyebrow">You're in</div>
+    <h1>Application<br>Received</h1>
+    <p class="tagline">Great things come to those who wait.</p>
+    <div class="status-grid">
+      <div class="status-cell">
+        <div class="label">Your Position</div>
+        <div class="value" id="my-position">#–</div>
+      </div>
+      <div class="status-cell">
+        <div class="label">Est. Review Time</div>
+        <div class="value days">5–7 business days</div>
+      </div>
+    </div>
+    <div class="skip-cta">
+      <p>Want to skip the queue? Have someone who knows you record a short video or voice note vouching for you.</p>
+      <button class="btn-primary" onclick="showPage('fastpass')" style="letter-spacing:0.1em;">Fast Pass</button>
+    </div>
+    <button class="btn-secondary" style="width:100%;display:block;text-align:center;margin-left:0;" onclick="showPage('queue-live')">View Live Queue</button>
+  </div>
+</div>
+
+<!-- FAST PASS -->
+<div id="page-fastpass" class="page">
+  <div class="fastpass-wrap">
+    <div class="eyebrow">Skip the Line</div>
+    <h1>Your Chance to<br>Skip the Queue</h1>
+    <p class="subtitle">If you are who you say you are, someone else should be able to confirm it. Have a friend, coworker, or anyone credible send a short video or voice note vouching for you.</p>
+    <div class="status-grid" style="margin-bottom:28px;">
+      <div class="status-cell">
+        <div class="label">Your Position</div>
+        <div class="value" id="fp-position">#–</div>
+      </div>
+      <div class="status-cell">
+        <div class="label">Est. Review Time</div>
+        <div class="value days">5–7 business days</div>
+      </div>
+    </div>
+    <div class="video-upload-zone" id="fp-video-zone" onclick="document.getElementById('fp-video-input').click()">
+      <div class="icon">🎬</div>
+      <p>Attach a video or voice note</p>
+      <p style="font-size:0.78rem;margin-top:4px;opacity:0.6;">MP4, MOV, M4A, MP3 — max 50MB</p>
+      <input type="file" id="fp-video-input" accept="video/*,audio/*" style="display:none;" onchange="handleFPFile(event)" />
+      <div class="file-name" id="fp-filename"></div>
+    </div>
+    <div class="upload-progress" id="fp-progress" style="margin-top:12px;">
+      <div class="upload-progress-bar" id="fp-progress-bar"></div>
+    </div>
+    <button class="btn-primary form-submit" id="fp-submit-btn" onclick="submitFastPass()" style="margin-top:20px;">Submit Fast Pass</button>
+    <p class="disclaimer">I reserve the right to reject any Fast Pass submission.</p>
+  </div>
+</div>
+
+<!-- LIVE QUEUE -->
+<div id="page-queue-live" class="page">
+  <div class="queue-wrap">
+    <div class="eyebrow">Updated in real time</div>
+    <h1>Live Queue</h1>
+    <p class="subtitle">Current applicants, in order.</p>
+    <div class="queue-table" id="queue-table">
+      <div class="loading-state">Loading queue...</div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+      <button class="btn-primary" onclick="showPage('apply')">Join the Queue</button>
+      <button class="btn-secondary" style="margin-left:0;" onclick="showPage('home')">Back to Home</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+  // ============================================
+  // CONFIGURATION — replace these values
+  // ============================================
+  const SUPABASE_URL = 'https://hftbnxexmikbuqswdalf.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhmdGJueGV4bWlrYnVxc3dkYWxmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0OTA2NzYsImV4cCI6MjA5ODA2NjY3Nn0.3fn-8o8pezoFrGoXdWvpfJHnAecq08c6Wvazv96mkwg';
+  // ============================================
+
+  const isConfigured = SUPABASE_URL !== 'YOUR_SUPABASE_URL';
+  if (!isConfigured) document.getElementById('config-banner').style.display = 'block';
+
+  const supabase = isConfigured ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+  let photoFiles = [null, null, null];
+  let videoFile = null;
+  let fpFile = null;
+  let currentAppId = null;
+  let currentPosition = null;
+
+  // ---- NAVIGATION ----
+  function showPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + id).classList.add('active');
+    document.querySelectorAll('.nav-links button').forEach(b => b.classList.remove('active'));
+    if (id === 'home') document.querySelectorAll('.nav-links button')[0].classList.add('active');
+    if (id === 'queue-live') { document.querySelectorAll('.nav-links button')[1].classList.add('active'); loadQueue(); }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ---- TOAST ----
+  function showToast(msg, isError = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (isError ? ' error' : '');
+    setTimeout(() => t.classList.remove('show'), 3500);
+  }
+
+  // ---- PHOTO HANDLING ----
+  function triggerPhotoUpload(idx) {
+    document.getElementById('photo-input-' + idx).click();
+  }
+  function handlePhotoSelect(event, idx) {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { showToast('Photo must be under 5MB.', true); return; }
+    photoFiles[idx] = file;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const thumb = document.getElementById('thumb-' + idx);
+      thumb.innerHTML = `<img src="${e.target.result}" alt="Photo ${idx+1}" /><button class="remove-btn" onclick="removePhoto(event,${idx})">✕</button>`;
+    };
+    reader.readAsDataURL(file);
+  }
+  function removePhoto(event, idx) {
+    event.stopPropagation();
+    photoFiles[idx] = null;
+    document.getElementById('photo-input-' + idx).value = '';
+    const thumb = document.getElementById('thumb-' + idx);
+    thumb.innerHTML = `<div class="thumb-icon">📷</div><div class="thumb-label">Add photo</div>`;
+  }
+
+  // ---- VIDEO HANDLING ----
+  function handleVideoSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (file.size > 50 * 1024 * 1024) { showToast('Video must be under 50MB.', true); return; }
+    videoFile = file;
+    const zone = document.getElementById('video-zone');
+    zone.classList.add('has-file');
+    document.getElementById('video-filename').textContent = file.name;
+  }
+  function handleFPFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (file.size > 50 * 1024 * 1024) { showToast('File must be under 50MB.', true); return; }
+    fpFile = file;
+    const zone = document.getElementById('fp-video-zone');
+    zone.classList.add('has-file');
+    document.getElementById('fp-filename').textContent = file.name;
+  }
+
+  // ---- UPLOAD FILE TO STORAGE ----
+  async function uploadFile(bucket, path, file, progressBar, progressEl) {
+    if (progressEl) progressEl.style.display = 'block';
+    const { data, error } = await supabase.storage.from(bucket).upload(path, file, { upsert: false });
+    if (progressBar) progressBar.style.width = '100%';
+    if (error) throw error;
+    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(path);
+    return urlData.publicUrl;
+  }
+
+  // ---- SUBMIT APPLICATION ----
+  async function submitApplication() {
+    const name = document.getElementById('f-name').value.trim();
+    const ig = document.getElementById('f-ig').value.trim();
+    const email = document.getElementById('f-email').value.trim();
+    const age = parseInt(document.getElementById('f-age').value);
+    const why = document.getElementById('f-why').value.trim();
+    const idea = document.getElementById('f-idea').value.trim();
+    const deals = document.getElementById('f-deals').value.trim();
+    const verify = document.getElementById('f-verify').value.trim();
+
+    if (!name || !ig || !email || !age || !why || !idea) { showToast('Fill in all required fields.', true); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('Enter a valid email address.', true); return; }
+    if (age < 18) { showToast('Must be 18 or older.', true); return; }
+    if (!photoFiles.some(f => f !== null)) { showToast('Add at least one photo.', true); return; }
+
+    if (!isConfigured) {
+      showToast('Add your Supabase credentials first.', true); return;
+    }
+
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Uploading...';
+
+    try {
+      const appId = crypto.randomUUID();
+      const photoUrls = [];
+
+      // Upload photos
+      for (let i = 0; i < 3; i++) {
+        if (photoFiles[i]) {
+          const ext = photoFiles[i].name.split('.').pop();
+          const url = await uploadFile('applicant-photos', `${appId}/photo-${i}.${ext}`, photoFiles[i], null, null);
+          photoUrls.push(url);
+        }
+      }
+
+      // Upload video if present
+      let videoUrl = null;
+      if (videoFile) {
+        btn.innerHTML = '<span class="spinner"></span>Uploading video...';
+        const progressEl = document.getElementById('upload-progress');
+        const progressBar = document.getElementById('upload-progress-bar');
+        const ext = videoFile.name.split('.').pop();
+        videoUrl = await uploadFile('applicant-videos', `${appId}/video.${ext}`, videoFile, progressBar, progressEl);
+      }
+
+      btn.innerHTML = '<span class="spinner"></span>Submitting...';
+
+      // Insert record
+      const { data, error } = await supabase.from('applications').insert([{
+        id: appId,
+        full_name: name,
+        instagram: ig,
+        email: email,
+        age: age,
+        why_me: why,
+        date_idea: idea,
+        dealbreakers: deals || null,
+        vouched_by: verify || null,
+        photo_urls: photoUrls,
+        video_url: videoUrl,
+        status: 'pending'
+      }]).select().single();
+
+      if (error) throw error;
+
+      currentAppId = data.id;
+      currentPosition = data.queue_position;
+      document.getElementById('my-position').textContent = '#' + currentPosition;
+      document.getElementById('fp-position').textContent = '#' + currentPosition;
+
+      showPage('status');
+      showToast('Application submitted. Good luck.');
+    } catch (err) {
+      console.error(err);
+      showToast('Something went wrong. Try again.', true);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Submit Application';
+    }
+  }
+
+  // ---- FAST PASS ----
+  async function submitFastPass() {
+    if (!fpFile) { showToast('Attach a video or voice note first.', true); return; }
+    if (!currentAppId) { showToast('Complete your application first.', true); return; }
+    if (!isConfigured) { showToast('Add Supabase credentials first.', true); return; }
+
+    const btn = document.getElementById('fp-submit-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Uploading...';
+
+    try {
+      const ext = fpFile.name.split('.').pop();
+      const progressEl = document.getElementById('fp-progress');
+      const progressBar = document.getElementById('fp-progress-bar');
+      const url = await uploadFile('applicant-videos', `${currentAppId}/fastpass.${ext}`, fpFile, progressBar, progressEl);
+
+      const { error } = await supabase.from('applications').update({ video_url: url }).eq('id', currentAppId);
+      if (error) throw error;
+
+      showToast('Fast Pass submitted. You\'re moving up.');
+      setTimeout(() => showPage('queue-live'), 1200);
+    } catch (err) {
+      console.error(err);
+      showToast('Upload failed. Try again.', true);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Submit Fast Pass';
+    }
+  }
+
+  // ---- LIVE QUEUE ----
+  async function loadQueue() {
+    const table = document.getElementById('queue-table');
+    table.innerHTML = '<div class="loading-state">Loading...</div>';
+
+    if (!isConfigured) {
+      table.innerHTML = '<div class="queue-empty">Connect Supabase to see the live queue.</div>';
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('applications')
+        .select('full_name, status, queue_position')
+        .in('status', ['pending', 'review', 'accepted'])
+        .order('queue_position', { ascending: true });
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        table.innerHTML = '<div class="queue-empty">No applicants yet. Be the first.</div>';
+        return;
+      }
+
+      const statusLabels = { accepted: 'Accepted', review: 'Under Review', pending: 'In Queue' };
+      table.innerHTML = data.map((row, i) => `
+        <div class="queue-row">
+          <span class="queue-num">${row.queue_position}</span>
+          <span class="queue-name">${row.full_name.split(' ')[0]}</span>
+          <span class="queue-status ${row.status}">${statusLabels[row.status]}</span>
+        </div>
+      `).join('');
+    } catch (err) {
+      table.innerHTML = '<div class="queue-empty">Could not load queue.</div>';
+    }
+  }
+</script>
+</body>
+</html>
